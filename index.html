@@ -1,3 +1,5 @@
+Gyatirim	
+
 <!DOCTYPE html>
 <html lang="tr">
   <head>
@@ -6,181 +8,246 @@
     <title>GY Yatırım Simülasyonu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Roboto+Mono:wght@400;700&display=swap');
       body {
         font-family: 'Inter', sans-serif;
       }
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Roboto+Mono:wght@400;700&display=swap');
+      @keyframes draw-line {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      .line-drawing {
+        stroke-dasharray: 1500;
+        stroke-dashoffset: 1500;
+        animation: draw-line 10s ease-in-out forwards;
+      }
+      @keyframes fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.5s ease-out forwards;
+      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
-    "react/": "https://esm.sh/react@^19.1.1/"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-import React, { useState, useEffect, useCallback } from 'react';
-import ReactDOM from 'react-dom/client';
 
-// From types.ts
-var GameState;
-(function (GameState) {
-    GameState[GameState["IDLE"] = 0] = "IDLE";
-    GameState[GameState["TRADING"] = 1] = "TRADING";
-    GameState[GameState["RESULT"] = 2] = "RESULT";
-})(GameState || (GameState = {}));
+    <!-- Dependencies for running React in the browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <script type="text/babel">
+      const { useState, useEffect, useCallback } = React;
 
-// From App.tsx
-const STOCK_SYMBOLS = ['AAPL', 'TSLA', 'GOOGL', 'AMZN', 'MSFT', 'NVDA', 'JPM', 'V', 'JNJ'];
-const COUNTDOWN_SECONDS = 10;
-const INITIAL_PRICE_BASE = 175;
-const PRICE_FLUCTUATION = 50;
-const TRADE_FLUCTUATION = 15;
+      const GameState = {
+        IDLE: 0,
+        TRADING: 1,
+        RESULT: 2,
+      };
 
-const getRandomStock = () => STOCK_SYMBOLS[Math.floor(Math.random() * STOCK_SYMBOLS.length)];
+      const STOCK_SYMBOLS = ['AAPL', 'TSLA', 'GOOGL', 'AMZN', 'MSFT', 'NVDA', 'JPM', 'V', 'JNJ'];
+      const COUNTDOWN_SECONDS = 10;
+      const INITIAL_PRICE_BASE = 175;
+      const PRICE_FLUCTUATION = 50;
+      const TRADE_FLUCTUATION = 15;
 
-const generateInitialPrice = () => {
-  return parseFloat((INITIAL_PRICE_BASE + (Math.random() - 0.5) * PRICE_FLUCTUATION).toFixed(2));
-};
+      const getRandomStock = () => STOCK_SYMBOLS[Math.floor(Math.random() * STOCK_SYMBOLS.length)];
 
-const App = () => {
-  const [gameState, setGameState] = useState(GameState.IDLE);
-  const [currentPrice, setCurrentPrice] = useState(generateInitialPrice);
-  const [stockSymbol, setStockSymbol] = useState(getRandomStock);
-  const [purchasePrice, setPurchasePrice] = useState(null);
-  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+      const generateInitialPrice = () => {
+        return parseFloat((INITIAL_PRICE_BASE + (Math.random() - 0.5) * PRICE_FLUCTUATION).toFixed(2));
+      };
 
-  useEffect(() => {
-    if (gameState !== GameState.TRADING) {
-      return;
-    }
+      const generatePathData = (width, height, points = 12) => {
+        const segmentWidth = width / (points - 1);
+        let path = `M 0 ${height / 2 + (Math.random() - 0.5) * height * 0.8}`;
+        for (let i = 1; i < points; i++) {
+          const x = i * segmentWidth;
+          const y = Math.max(15, Math.min(height - 15, height / 2 + (Math.random() - 0.5) * height * 0.9));
+          path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+        }
+        return path;
+      };
 
-    if (countdown === 0) {
-      setCurrentPrice(prevPrice => {
-        const isWin = Math.random() < 0.3; // 30% win ratio, 70% loss ratio
-        const changeAmount = (Math.random() * 0.5 + 0.5) * TRADE_FLUCTUATION; // Fluctuate between 50% and 100%
-        const priceChange = isWin ? changeAmount : -changeAmount;
-        const newPrice = prevPrice + priceChange;
-        return parseFloat(Math.max(newPrice, 0.01).toFixed(2)); // Ensure price doesn't go below 0.01
-      });
-      setGameState(GameState.RESULT);
-      setCountdown(COUNTDOWN_SECONDS); // Reset for the next round
-      return;
-    }
+      const App = () => {
+        const [gameState, setGameState] = useState(GameState.IDLE);
+        const [currentPrice, setCurrentPrice] = useState(generateInitialPrice);
+        const [stockSymbol, setStockSymbol] = useState(getRandomStock);
+        const [purchasePrice, setPurchasePrice] = useState(null);
+        const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+        const [chartPath, setChartPath] = useState('');
 
-    const timerId = setInterval(() => {
-      setCountdown(c => c - 1);
-    }, 1000);
+        useEffect(() => {
+          if (gameState !== GameState.TRADING) {
+            return;
+          }
 
-    return () => clearInterval(timerId);
-  }, [gameState, countdown]);
+          if (countdown === 0) {
+            setCurrentPrice(prevPrice => {
+              const isWin = Math.random() < 0.3;
+              const changeAmount = (Math.random() * 0.5 + 0.5) * TRADE_FLUCTUATION;
+              const priceChange = isWin ? changeAmount : -changeAmount;
+              const newPrice = prevPrice + priceChange;
+              return parseFloat(Math.max(newPrice, 0.01).toFixed(2));
+            });
+            setGameState(GameState.RESULT);
+            setCountdown(COUNTDOWN_SECONDS);
+            return;
+          }
 
-  const handleBuy = useCallback(() => {
-    if (currentPrice > 0) {
-        setPurchasePrice(currentPrice);
-        setGameState(GameState.TRADING);
-    }
-  }, [currentPrice]);
+          const timerId = setInterval(() => {
+            setCountdown(c => c - 1);
+          }, 1000);
 
-  const handleReset = useCallback(() => {
-    setGameState(GameState.IDLE);
-    setPurchasePrice(null);
-    setCurrentPrice(generateInitialPrice());
-    setStockSymbol(getRandomStock());
-    setCountdown(COUNTDOWN_SECONDS);
-  }, []);
+          return () => clearInterval(timerId);
+        }, [gameState, countdown]);
 
-  const renderContent = () => {
-    switch (gameState) {
-      case GameState.TRADING:
+        const handleBuy = useCallback(() => {
+          if (currentPrice > 0) {
+              setPurchasePrice(currentPrice);
+              setChartPath(generatePathData(400, 150));
+              setGameState(GameState.TRADING);
+          }
+        }, [currentPrice]);
+
+        const handleReset = useCallback(() => {
+          setGameState(GameState.IDLE);
+          setPurchasePrice(null);
+          setCurrentPrice(generateInitialPrice());
+          setStockSymbol(getRandomStock());
+          setCountdown(COUNTDOWN_SECONDS);
+          setChartPath('');
+        }, []);
+
+        const renderContent = () => {
+          switch (gameState) {
+            case GameState.TRADING:
+              return (
+                <div className="w-full h-full flex items-center justify-center relative bg-slate-800/50 rounded-lg overflow-hidden border border-slate-700 shadow-inner">
+                   <div className="absolute inset-0 grid grid-cols-10 grid-rows-6 opacity-20">
+                    {Array.from({ length: 60 }).map((_, i) => (
+                      <div key={i} className="border-r border-b border-blue-400/50"></div>
+                    ))}
+                  </div>
+                  <svg width="100%" height="100%" viewBox="0 0 400 150" preserveAspectRatio="none" className="absolute inset-0">
+                      <defs>
+                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                        </linearGradient>
+                         <linearGradient id="flameGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#F9A825" />
+                          <stop offset="100%" stopColor="#E65100" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d={`${chartPath} L 400 150 L 0 150 Z`}
+                        fill="url(#areaGradient)"
+                        className="line-drawing"
+                      />
+                      <path
+                        id="rocketPath"
+                        d={chartPath}
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="line-drawing"
+                      />
+                      <g>
+                          <g transform="scale(0.9)">
+                              <path d="M -16,0 L -12,-4 L -22,-2 L -20,0 L -22,2 L -12,4 Z" fill="url(#flameGradient)"/>
+                              <path d="M -4,5 L -10,10 L -8,5 Z" fill="#f44336"/>
+                              <path d="M -4,-5 L -10,-10 L -8,-5 Z" fill="#f44336"/>
+                              <path d="M -12,5 L 10,5 L 10,-5 L -12,-5 C -15,-5 -15,5 -12,5 Z" fill="#ECEFF1"/>
+                              <path d="M 10,-5 L 18,0 L 10,5 Z" fill="#f44336"/>
+                              <circle cx="4" cy="0" r="3" fill="#81D4FA" stroke="#FFF" strokeWidth="0.5"/>
+                          </g>
+                          <animateMotion dur="10s" fill="freeze" rotate="auto">
+                              <mpath href="#rocketPath" />
+                          </animateMotion>
+                      </g>
+                    </svg>
+                </div>
+              );
+            case GameState.RESULT: {
+              if (purchasePrice === null) return null;
+              const isProfit = currentPrice > purchasePrice;
+              const difference = Math.abs(currentPrice - purchasePrice).toFixed(2);
+
+              return (
+                <div className="text-center animate-fade-in">
+                  <p className={`text-3xl md:text-5xl font-bold ${isProfit ? 'text-green-400' : 'text-red-500'}`}>
+                    {isProfit ? 'Tebrikler, kazandınız!' : 'Maalesef, kaybettiniz!'}
+                  </p>
+                  <p className="text-xl md:text-2xl text-gray-300 mt-2">
+                    {isProfit ? 'Kazanç' : 'Kayıp'}: {isProfit ? '+' : '-'}${difference}
+                  </p>
+                  <button
+                    onClick={handleReset}
+                    className="mt-8 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    {isProfit ? 'Yeniden Oynayın' : 'Tekrar Deneyin!'}
+                  </button>
+                </div>
+              );
+            }
+            case GameState.IDLE:
+            default:
+              return (
+                <button
+                  onClick={handleBuy}
+                  className="w-36 h-36 text-4xl sm:w-48 sm:h-48 sm:text-5xl rounded-full bg-green-500 text-white font-bold flex items-center justify-center transform hover:scale-110 focus:scale-110 active:scale-100 focus:outline-none focus:ring-4 focus:ring-green-400 focus:ring-opacity-50 transition-transform duration-300 shadow-xl hover:shadow-2xl"
+                  aria-label="Satın Al"
+                >
+                  SATIN AL
+                </button>
+              );
+          }
+        };
+
         return (
-          React.createElement("button", {
-            disabled: true,
-            className: "w-36 h-36 md:w-48 md:h-48 rounded-full bg-gray-600 text-white text-5xl md:text-6xl font-bold flex items-center justify-center cursor-not-allowed shadow-lg transition-transform duration-300"
-          }, countdown)
+          <main className="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 relative selection:bg-green-500/30 overflow-x-hidden">
+              <img
+                  src="https://static.wixstatic.com/media/c45cf1_6a8af70feea84d92ac34423e5bbc7985~mv2.png/v1/fill/w_662,h_662,al_c,q_90,enc_avif,quality_auto/c45cf1_6a8af70feea84d92ac34423e5bbc7985~mv2.png"
+                  alt="Site Logosu"
+                  className="absolute top-4 left-4 w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40"
+              />
+              <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_800px_at_50%_200px,#1e3a8a33,transparent)]"></div>
+              <div className="relative z-10 text-center w-full max-w-2xl flex flex-col items-center justify-center" style={{minHeight: '450px'}}>
+                  <div className="mb-8 text-center">
+                      <div className="h-24 flex flex-col justify-center items-center">
+                          {gameState === GameState.TRADING && (
+                              <div className="animate-fade-in text-center">
+                                  <p className="text-lg sm:text-xl font-semibold text-blue-400 animate-pulse mb-2">Yatırım yapılıyor...</p>
+                                  <p className="text-3xl sm:text-4xl font-mono font-bold text-blue-300">{countdown}</p>
+                              </div>
+                          )}
+                      </div>
+                      <h1 className="text-4xl md:text-6xl font-black text-gray-200 tracking-wider">{stockSymbol}</h1>
+                      <p className="text-6xl md:text-8xl font-mono font-bold text-gray-50 tracking-tight mt-2 transition-colors duration-500">
+                          ${currentPrice > 0 ? currentPrice.toFixed(2) : '---.--'}
+                      </p>
+                  </div>
+                  <div className="h-48 w-full flex items-center justify-center">
+                      {renderContent()}
+                  </div>
+              </div>
+              <footer className="absolute bottom-4 text-gray-500 text-sm text-center px-4">
+                  Bu bir simülasyondur. Yatırım tavsiyesi değildir.
+              </footer>
+          </main>
         );
-      case GameState.RESULT: {
-        if (purchasePrice === null) return null; // Should not happen
-        const isProfit = currentPrice > purchasePrice;
-        const difference = Math.abs(currentPrice - purchasePrice).toFixed(2);
+      };
 
-        return (
-          React.createElement("div", { className: "text-center animate-fade-in" },
-            React.createElement("p", { className: `text-3xl md:text-5xl font-bold ${isProfit ? 'text-green-400' : 'text-red-500'}` },
-              isProfit ? 'Tebrikler, kazandınız!' : 'Maalesef, kaybettiniz!'
-            ),
-            React.createElement("p", { className: "text-xl md:text-2xl text-gray-300 mt-2" },
-              (isProfit ? 'Kazanç' : 'Kayıp'), ": ", (isProfit ? '+' : '-'), "$", difference
-            ),
-            React.createElement("button", {
-              onClick: handleReset,
-              className: "mt-6 md:mt-8 px-6 py-3 md:px-8 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-all duration-300 shadow-md hover:shadow-lg"
-            },
-              isProfit ? 'Yeniden Oynayın' : 'Tekrar Deneyin!'
-            )
-          )
-        );
-      }
-      case GameState.IDLE:
-      default:
-        return (
-          React.createElement("button", {
-            onClick: handleBuy,
-            className: "w-36 h-36 md:w-48 md:h-48 rounded-full bg-green-500 text-white text-4xl md:text-5xl font-bold flex items-center justify-center transform hover:scale-110 focus:scale-110 active:scale-100 focus:outline-none focus:ring-4 focus:ring-green-400 focus:ring-opacity-50 transition-transform duration-300 shadow-xl hover:shadow-2xl"
-          }, "SATIN AL")
-        );
-    }
-  };
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
 
-  return (
-    React.createElement("main", { className: "bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4 md:p-6 relative selection:bg-green-500/30" },
-        React.createElement("img", {
-            src: "https://static.wixstatic.com/media/c45cf1_6a8af70feea84d92ac34423e5bbc7985~mv2.png/v1/fill/w_662,h_662,al_c,q_90,enc_avif,quality_auto/c45cf1_6a8af70feea84d92ac34423e5bbc7985~mv2.png",
-            alt: "Site Logo",
-            className: "absolute top-4 left-4 w-20 h-20 sm:w-24 sm:h-24 lg:w-[250px] lg:h-[250px]"
-        }),
-        React.createElement("div", { className: "absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_800px_at_50%_200px,#1e3a8a33,transparent)]" }),
-        React.createElement("div", { className: "relative z-10 text-center w-full max-w-2xl flex flex-col items-center justify-center", style: { minHeight: '450px' } },
-            React.createElement("div", { className: "mb-12 md:mb-16 text-center" },
-                gameState === GameState.TRADING && (
-                    React.createElement("p", { className: "text-2xl md:text-3xl font-semibold text-blue-400 mb-2 md:mb-4 animate-pulse" }, "Yatırım yapılıyor...")
-                ),
-                React.createElement("h1", { className: "text-5xl md:text-6xl font-black text-gray-200 tracking-wider" }, stockSymbol),
-                React.createElement("p", { className: "text-6xl md:text-8xl font-mono font-bold text-gray-50 tracking-tight mt-2 transition-colors duration-500" },
-                    "$", currentPrice > 0 ? currentPrice.toFixed(2) : '---.--'
-                )
-            ),
-            React.createElement("div", { className: "h-36 md:h-48 flex items-center justify-center" },
-                renderContent()
-            )
-        ),
-        React.createElement("footer", { className: "absolute bottom-4 text-center w-full px-4 text-gray-500 text-xs sm:text-sm" },
-            "Bu bir simülasyondur. Yatırım tavsiyesi değildir."
-        )
-    )
-  );
-};
-
-// From index.tsx
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  React.createElement(React.StrictMode, null, 
-    React.createElement(App, null)
-  )
-);
     </script>
   </body>
 </html>
+
